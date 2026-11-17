@@ -1,0 +1,27 @@
+ПЕРЕВІРКА ДОВІДКИ
+node main.js --help
+
+ЗАПУСК СЕРВЕРА В ОКРЕМОМУ ТЕРМІНАЛІ
+npm start -- --host 127.0.0.1 --port 3000 --cache ./cache
+
+ВІДСУТНІСТЬ HOST — очікується код завершення 1
+node main.js --port 3000 --cache ./cache
+$LASTEXITCODE
+
+ВІДСУТНІСТЬ PORT — очікується код завершення 1
+node main.js --host 127.0.0.1 --cache ./cache
+$LASTEXITCODE
+
+ВІДСУТНІСТЬ CACHE — очікується код завершення 1
+node main.js --host 127.0.0.1 --port 3000
+$LASTEXITCODE
+
+НЕПРАВИЛЬНИЙ ПОРТ — очікується код завершення 1
+node main.js --host 127.0.0.1 --port abc --cache ./cache
+$LASTEXITCODE
+
+НЕДОЗВОЛЕНИЙ МЕТОД — очікується 405 та Allow
+curl.exe -i -X POST http://127.0.0.1:3000/200
+
+НЕПРАВИЛЬНИЙ ШЛЯХ — очікується 400
+curl.exe -i http://127.0.0.1:3000/abc
