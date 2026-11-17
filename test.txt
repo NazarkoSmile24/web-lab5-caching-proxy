@@ -41,3 +41,26 @@ curl.exe -i http://127.0.0.1:3000/999
 
 ВІДСУТНІСТЬ ФАЙЛУ ПІСЛЯ ПОМИЛКИ — очікується False
 Test-Path .\cache\999.jpg
+
+PUT ВЛАСНОЇ КАРТИНКИ — очікується 201
+Файл own.jpg має бути JPEG-картинкою в корені проєкту.
+curl.exe -v --upload-file "./own.jpg" -H "Content-Type: image/jpeg" http://127.0.0.1:3000/418
+
+GET ПІСЛЯ PUT — очікується 200, image/jpeg, X-Cache: CACHE
+curl.exe -sS -D - http://127.0.0.1:3000/418 -o results/after-put.jpg
+
+ПЕРЕВІРКА РОЗМІРІВ — усі три значення мають збігатися
+Get-Item .\own.jpg, .\cache\418.jpg, .\results\after-put.jpg | Select-Object Name, Length
+
+ПЕРЕВІРКА ЦІЛІСНОСТІ — хеші мають збігатися
+Get-FileHash .\own.jpg, .\results\after-put.jpg
+
+ПОПЕРЕДНЯ СПРОБА PUT ЧЕРЕЗ --data-binary
+curl.exe -i -X PUT http://127.0.0.1:3000/418 -H "Content-Type: image/jpeg" --data-binary "@own.jpg"
+Під час цієї спроби отримано файл розміром 4 байти.
+Після перезапуску сервера та повторного PUT через --upload-file
+отримано повний файл; розміри та хеші збіглися.
+Точну причину попереднього обрізання не встановлено.
+
+ДІАГНОСТИКА ОБРІЗАНОГО ФАЙЛУ
+Format-Hex .\results\after-put.jpg

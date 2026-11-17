@@ -13,6 +13,8 @@ import {
 import { Command } from 'commander';
 import superagent from 'superagent';
 
+import { buffer } from 'node:stream/consumers';
+
 // Надсилання текстової відповіді клієнту.
 function sendText(res, status, message) {
   res.writeHead(status, {
@@ -101,6 +103,22 @@ async function handleGet(res, filePath, code) {
   sendImage(res, image, 'HTTP_CAT');
 }
 
+// Отримання картинки з тіла PUT-запиту.
+async function handlePut(req, res, filePath) {
+  // Читаємо потік запиту в Buffer через проміс.
+  const image = await buffer(req);
+
+  if (image.length === 0) {
+    sendText(res, 400, 'Тіло запиту не може бути порожнім');
+    return;
+  }
+
+  // Зберігаємо отримані байти без змін.
+  await saveImage(filePath, image);
+
+  sendText(res, 201, 'Картинку збережено в кеші');
+}
+
 async function main() {
   const program = new Command();
 
@@ -168,7 +186,12 @@ async function main() {
         return;
       }
 
-      // PUT і DELETE додамо на наступних етапах.
+      if (req.method === 'PUT') {
+        await handlePut(req, res, filePath);
+        return;
+      }
+
+      // DELETE додамо на наступному етапі.
       sendText(res, 501, 'Метод ще не реалізовано');
     } catch (error) {
       console.error('Помилка обробки запиту:', error.message);
