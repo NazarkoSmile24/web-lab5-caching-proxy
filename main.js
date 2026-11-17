@@ -1,8 +1,17 @@
 import http from 'node:http';
 import path from 'node:path';
 import { once } from 'node:events';
-import { mkdir } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import {
+  mkdir,
+  readFile,
+  writeFile,
+  rename,
+  rm,
+} from 'node:fs/promises';
+
 import { Command } from 'commander';
+import superagent from 'superagent';
 
 // Надсилання текстової відповіді клієнту.
 function sendText(res, status, message) {
@@ -11,6 +20,85 @@ function sendText(res, status, message) {
   });
 
   res.end(message);
+}
+
+// Надсилання картинки та заголовка з її джерелом.
+function sendImage(res, image, source) {
+  res.writeHead(200, {
+    'Content-Type': 'image/jpeg',
+    'Content-Length': image.length,
+    'X-Cache': source,
+    'Cache-Control': 'no-store',
+  });
+
+  res.end(image);
+}
+
+// Запис через тимчасовий файл, щоб клієнт
+// не прочитав частково записану картинку.
+async function saveImage(filePath, image) {
+  const temporaryPath = `${filePath}.${randomUUID()}.tmp`;
+
+  try {
+    await writeFile(temporaryPath, image);
+    await rename(temporaryPath, filePath);
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
+}
+
+// Обробка GET-запиту.
+async function handleGet(res, filePath, code) {
+  // Спочатку шукаємо картинку в кеші.
+  try {
+    const image = await readFile(filePath);
+
+    sendImage(res, image, 'CACHE');
+    return;
+  } catch (error) {
+    // ENOENT означає, що файлу немає.
+    if (error.code !== 'ENOENT') {
+      throw error;
+    }
+  }
+
+  // Якщо файлу немає, завантажуємо його з http.cat.
+  let image;
+
+  try {
+    const response = await superagent
+      .get(`https://http.cat/${code}`)
+      .responseType('blob')
+      .timeout({
+        response: 10000,
+        deadline: 20000,
+      });
+
+    const contentType = response.headers['content-type'] ?? '';
+
+    if (
+      !contentType.toLowerCase().startsWith('image/jpeg') ||
+      !Buffer.isBuffer(response.body) ||
+      response.body.length === 0
+    ) {
+      throw new Error('Зовнішній сервер не повернув JPEG-картинку');
+    }
+
+    image = response.body;
+  } catch (error) {
+    console.error(`Помилка http.cat для ${code}:`, error.message);
+
+    sendText(
+      res,
+      404,
+      'Картинку не знайдено або http.cat недоступний',
+    );
+    return;
+  }
+
+  // Спочатку зберігаємо картинку, потім надсилаємо клієнту.
+  await saveImage(filePath, image);
+  sendImage(res, image, 'HTTP_CAT');
 }
 
 async function main() {
@@ -72,7 +160,15 @@ async function main() {
         return;
       }
 
-      // Методи реалізуємо на наступних етапах.
+      const code = match[1];
+      const filePath = path.join(cacheDirectory, `${code}.jpg`);
+
+      if (req.method === 'GET') {
+        await handleGet(res, filePath, code);
+        return;
+      }
+
+      // PUT і DELETE додамо на наступних етапах.
       sendText(res, 501, 'Метод ще не реалізовано');
     } catch (error) {
       console.error('Помилка обробки запиту:', error.message);

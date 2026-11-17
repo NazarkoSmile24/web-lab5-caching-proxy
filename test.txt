@@ -25,3 +25,19 @@ curl.exe -i -X POST http://127.0.0.1:3000/200
 
 НЕПРАВИЛЬНИЙ ШЛЯХ — очікується 400
 curl.exe -i http://127.0.0.1:3000/abc
+
+СТВОРЕННЯ ПАПКИ ДЛЯ РЕЗУЛЬТАТІВ
+New-Item -ItemType Directory -Force results
+
+ПЕРШИЙ GET — очікується 200, image/jpeg, X-Cache: HTTP_CAT
+Перед перевіркою файл cache/200.jpg має бути відсутній.
+curl.exe -sS -D - http://127.0.0.1:3000/200 -o results/first.jpg
+
+ПОВТОРНИЙ GET — очікується 200, image/jpeg, X-Cache: CACHE
+curl.exe -sS -D - http://127.0.0.1:3000/200 -o results/second.jpg
+
+НЕІСНУЮЧА КАРТИНКА — очікується 404
+curl.exe -i http://127.0.0.1:3000/999
+
+ВІДСУТНІСТЬ ФАЙЛУ ПІСЛЯ ПОМИЛКИ — очікується False
+Test-Path .\cache\999.jpg
