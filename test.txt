@@ -64,3 +64,15 @@ curl.exe -i -X PUT http://127.0.0.1:3000/418 -H "Content-Type: image/jpeg" --dat
 
 ДІАГНОСТИКА ОБРІЗАНОГО ФАЙЛУ
 Format-Hex .\results\after-put.jpg
+
+ПІДГОТОВКА КАРТИНКИ ДЛЯ ПЕРЕВІРКИ DELETE — очікується 201
+curl.exe -i --upload-file "./own.jpg" -H "Content-Type: image/jpeg" http://127.0.0.1:3000/418
+
+ВИДАЛЕННЯ КАРТИНКИ — очікується 200
+curl.exe -i -X DELETE http://127.0.0.1:3000/418
+
+ПЕРЕВІРКА ВІДСУТНОСТІ ФАЙЛУ — очікується False
+Test-Path .\cache\418.jpg
+
+ПОВТОРНЕ ВИДАЛЕННЯ — очікується 404
+curl.exe -i -X DELETE http://127.0.0.1:3000/418

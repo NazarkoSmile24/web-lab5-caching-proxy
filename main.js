@@ -8,6 +8,7 @@ import {
   writeFile,
   rename,
   rm,
+  unlink,
 } from 'node:fs/promises';
 
 import { Command } from 'commander';
@@ -119,6 +120,23 @@ async function handlePut(req, res, filePath) {
   sendText(res, 201, 'Картинку збережено в кеші');
 }
 
+// Видалення картинки з кешу.
+async function handleDelete(res, filePath) {
+  try {
+    await unlink(filePath);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      sendText(res, 404, 'Картинки немає в кеші');
+      return;
+    }
+
+    // Інші помилки передаємо загальному обробнику.
+    throw error;
+  }
+
+  sendText(res, 200, 'Картинку видалено з кешу');
+}
+
 async function main() {
   const program = new Command();
 
@@ -191,8 +209,7 @@ async function main() {
         return;
       }
 
-      // DELETE додамо на наступному етапі.
-      sendText(res, 501, 'Метод ще не реалізовано');
+      await handleDelete(res, filePath);
     } catch (error) {
       console.error('Помилка обробки запиту:', error.message);
 
